@@ -1,3 +1,4 @@
+#!bin/bash
 
 # Set time zone
 echo Setting time zone and language
@@ -45,7 +46,7 @@ if [[ "${partition_hdd}" != "" ]]; then
 	echo ~/Videos
 	echo ~/Pictures
 	echo ~/Music
-	ln -s /hdd/Pictures ~/Pictures                                                                        
+	ln -s /hdd/Pictures ~/Pictures
 	ln -s /hdd/Videos ~/Videos
 	ln -s /hdd/Downloads ~/Downloads
 	ln -s /hdd/Music ~/Music

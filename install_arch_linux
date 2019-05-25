@@ -171,7 +171,7 @@ genfstab -U /mnt >> /mnt/etc/fstab
 cat /etc/pacman.d/mirrorlist > /mnt/etc/pacman.d/mirrorlist
 
 # Chroot into installed linux
-cp ./apply_settings /mnt/tmp
+cp ./apply_settings /mnt
 echo
 echo Chrooting into /mnt
-arch-chroot /mnt /tmp/apply_settings
+arch-chroot /mnt /apply_settings
