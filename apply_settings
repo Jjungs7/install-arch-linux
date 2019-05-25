@@ -25,16 +25,18 @@ echo "127.0.0.1 localhost\n::1 localhost\n127.0.1.1 ${username}-pc.org" >> /etc/
 
 useradd ${username} -g users -G storage,wheel,power -m -s /bin/bash
 read -s -p "Enter new password for ${username}: (input is not visible)" userpw
-echo "${userpw}" | passwd --stdin ${username}
+echo ${username}:${userpw} | chpasswd
+echo
 read -s -p "Enter new password for root: (leave empty if you want to use user's pw)" rootpw
 if [ "${rootpw}" != "" ]; then
-	echo "${rootpw}" | passwd --stdin
+	echo "root:${rootpw}" | chpasswd
 else
-	echo "${userpw}" | passwd --stdin
+	echo "root:${userpw}" | chpasswd
 fi
 
 # Create symlink
 if [[ "${partition_hdd}" != "" ]]; then
+	echo
 	echo Creating symlinks for the following directories:
 	rm ~/Downloads
 	rm ~/Documents
@@ -58,7 +60,7 @@ echo Installing packages...
 pacman -Syyu
 pacman -S sudo base-devel git vim wget yajl
 
-echo Installing pamac-AUR for GUI package managing
+echo "echo Installing pamac-AUR for GUI package managing
 cd /tmp
 git clone https://aur.archlinux.org/package-query.git
 cd package-query/
@@ -66,7 +68,7 @@ makepkg -si && cd /tmp/
 git clone https://aur.archlinux.org/yaourt.git
 cd yaourt/
 makepkg -si
-yaourt -S pamac-aur
+yaourt -S pamac-aur" > /home/${username}/Desktop/install_aur
 
 # Install bootloader
 fdisk -l
@@ -80,6 +82,7 @@ else
 fi
 
 read -p "This system will install Gnome desktop environment(GDM) by default. Continue?(y/n)" install_gdm
+
 if [ "${install_gdm}" != "n" ] || [ "${install_gdm}" != "N" ]; then
 	pacman -S xorg xorg.server
 	systemctl enable gdm.service
