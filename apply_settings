@@ -58,7 +58,8 @@ fi
 # Install packages
 echo Installing packages...
 pacman -Syyu
-pacman -S sudo base-devel git vim wget yajl
+pacman -S base-devel
+yes | pacman -S sudo git vim wget yajl > dev/null
 
 echo "echo Installing pamac-AUR for GUI package managing
 cd /tmp
@@ -82,9 +83,10 @@ else
 fi
 
 read -p "This system will install Gnome desktop environment(GDM) by default. Continue?(y/n)" install_gdm
-
+echo ${install_gdm}
 if [ "${install_gdm}" != "n" ] || [ "${install_gdm}" != "N" ]; then
-	pacman -S xorg xorg.server
+	pacman -S xorg xorg-server
+	pacman -S gnome
 	systemctl enable gdm.service
 else
 	echo "You may install any other desktop environment"
