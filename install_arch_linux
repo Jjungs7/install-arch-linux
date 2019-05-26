@@ -139,13 +139,13 @@ done
 # Format and mount root
 echo
 echo Mounting created partition onto /mnt
-mkfs.ext4 ${partition_root}
-mount ${partition_root} /mnt
+mkfs.ext4 ${partition_root} > /dev/null
+mount ${partition_root} /mnt > /dev/null
 
 # Change pacman mirror of live Linux
-pacman -S pacman-mirrorlist pacman-contrib
+yes | pacman -S pacman-mirrorlist pacman-contrib > /dev/null
 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-awk '/^## \(South Korea\|Taiwan\|Hong Kong\|Japan\)$/{f=1}f==0{next}/^$/{exit}{print substr($0, 2)}' /etc/pacman.d/mirrorlist.backup
+awk '/^## \(Taiwan\|Hong Kong\|Japan\)$/{f=1}f==0{next}/^$/{exit}{print substr($0, 2)}' /etc/pacman.d/mirrorlist.backup > /dev/null
 echo Refreshing pacman mirrors. This may take some time...
 rankmirrors -n 6 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist
 echo Successfully refreshed mirrors
@@ -159,13 +159,13 @@ echo Finished installing arch linux
 echo
 echo Mounting remaining partitions
 mkdir /mnt/hdd
-mkfs.ext4 ${partition_home}
-mkfs.ext4 ${partition_hdd}
-mkswap ${partition_swap}
-swapon ${partition_swap}
-mount ${partition_home} /mnt/home
-mount ${partition_hdd} /mnt/hdd
-genfstab -U /mnt >> /mnt/etc/fstab
+mkfs.ext4 ${partition_home} > /dev/null
+mkfs.ext4 ${partition_hdd} > /dev/null
+mkswap ${partition_swap} > /dev/null
+swapon ${partition_swap} > /dev/null
+mount ${partition_home} /mnt/home > /dev/null
+mount ${partition_hdd} /mnt/hdd > /dev/null
+genfstab -U /mnt >> /mnt/etc/fstab > /dev/null
 
 # Change pacman mirror
 cat /etc/pacman.d/mirrorlist > /mnt/etc/pacman.d/mirrorlist
