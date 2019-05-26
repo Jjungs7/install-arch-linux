@@ -1,0 +1,259 @@
+#!/bin/bash
+
+# script global variables
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+NC='\033[0m'
+
+
+# Welcome
+echo This script will install arch linux on your system
+echo -e "Please make sure that your booting system is ${RED}UEFI${NC} based"
+echo
+echo "    # If you are using BIOS then you can comment bootloader specific lines"
+echo "    # and install bootloader for yourself"
+echo
+echo "To automatically install programs, you may need to get connected to the internet"
+echo Otherwise you may have to install for yourself
+echo
+echo "    # You can check your internet connection with the following command"
+echo "    # ping archlinux.org"
+echo
+read -p "Do you want to proceed with the installation?(y/n)" do_install
+
+if [ "${do_install}" == "n" ] || [ "${do_install}" == "N" ]; then
+	exit
+fi
+
+echo
+echo
+echo "This script needs you to make partitions manually."
+echo -e "You can make(or change, delete) partitions with tools like ${BLUE}cfdisk${NC} or ${BLUE}parted${NC}"
+echo
+read -p "Are your partitions ready for installation?(y/n)" is_ready
+if [ "${is_ready}" == "n" ] || [ "${is_ready}" == "N" ]; then
+	echo
+	echo
+	echo "Please make sure all partitions are ready"
+	echo "Recommended partitions to create are:"
+	echo
+	echo /
+	echo /home
+	echo "/hdd (if any)"
+	echo "swap (if any)"
+	echo
+	echo "    # Swap partitions usually have size of (ram_size * 2)"
+	echo "    # / and /home partitions are relatively smaller than /hdd"
+	echo "    # OS, user programs are stored in a SSD(/, /home) and multimedia files in a HDD(/hdd)"
+	echo "    # swap partitions are specially needed if you use a lot of memory(ex. computer vision tasks)"
+	echo "    # and it is recommended to create the swap partition in HDD"
+	echo
+	echo "If you don't have /boot (It has to be EFI system partition) You may create a partition for /boot too"
+	echo "Check how to in this link https://bit.ly/2ExmFid"
+	exit
+fi
+
+# Get partitions
+containsElement () {
+  local e match="$1"
+  shift
+  for e; do [[ "$e" == "$match" ]] && return 1; done
+  return 0
+}
+
+fdisk -l
+echo
+echo "Please enter the device names for your partition. (/dev/sdaX or /dev/nvme0n1pX. X is partition number)"
+echo -e "Ex) ${BLUE}/dev/sda5${NC}"
+echo -e "${RED}root${NC} and ${YELLOW}home${NC} partitions are required"
+check_flag=0
+fdisk_output=( $(fdisk -l) )
+for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
+	if [[ ${fdisk_output[$i]} =~ "/dev/" ]]; then
+		:
+	else
+		unset fdisk_output[$i]
+	fi
+done
+
+while [ "${check_flag}" == 0 ]; do
+	check_flag=1
+	read -p "Enter root partition: " partition_root
+	containsElement "${partition_root}" "${fdisk_output[@]}"
+	res=$?
+	if [ "${res}" != 1 ] || [ "${partition_root}" == "" ]; then
+		echo -e "${RED}root${NC} device name does not exist"
+		check_flag=0
+		continue
+	fi
+done
+
+check_flag=0
+while [ "${check_flag}" == 0 ]; do
+	check_flag=1
+	read -p "Enter home partition: " partition_home
+	containsElement "${partition_home}" "${fdisk_output[@]}"
+	res=$?
+	if [ "${res}" != 1 ] || [ "${partition_home}" == "" ]; then
+		echo -e "${YELLOW}home${NC} device name does not exist"
+		check_flag=0
+	fi
+done
+	
+check_flag=0
+while [ "${check_flag}" == 0 ]; do
+	swap_exists=1
+	check_flag=1
+	read -p "Enter swap partition(leave empty if not needed): " partition_swap
+	containsElement "${partition_swap}" "${fdisk_output[@]}"
+	res=$?
+	if [ "${res}" != 1 ] || [ "${partition_swap}" == "" ]; then
+		swap_exists=0
+	fi
+
+	if [ "${swap_exists}" == 0 ] && [ "${partition_swap}" != "" ]; then
+		echo -e "${BLUE}Swap${NC} device name is incorrect (or does not exist)"
+		check_flag=0
+	fi
+done
+
+check_flag=0
+while [ "${check_flag}" == 0 ]; do
+	hdd_exists=1
+	check_flag=1
+	read -p "Enter hdd partition(leave empty if not needed): " partition_hdd
+	containsElement "${partition_hdd}" "${fdisk_output[@]}"
+	res=$?
+	if [ "${res}" != 1 ] || [ "${partition_hdd}" == "" ]; then
+		hdd_exists=0
+	fi
+
+	if [ "${hdd_exists}" == 0 ] && [ "${partition_hdd}" != "" ]; then
+		echo -e "${GREEN}hdd${NC} device name is incorrect (or does not exist)"
+		check_flag=0
+	fi
+done
+
+# Format and mount root
+echo
+echo Mounting created partition onto /mnt
+mkfs.ext4 ${partition_root}
+mount ${partition_root} /mnt
+
+# Install arch_linux
+echo Installing arch linux into /mnt. This may take some time...
+pacstrap /mnt base
+echo Finished installing arch linux
+
+# Format and mount remaining partitions
+echo
+echo Mounting remaining partitions
+mkfs.ext4 ${partition_home}
+mkfs.ext4 ${partition_hdd}
+mkswap ${partition_swap}
+swapon ${partition_swap}
+mount ${partition_home} /mnt/home
+mount ${partition_hdd} /mnt/hdd
+genfstab -U /mnt >> /mnt/etc/fstab
+
+# Change pacman mirror
+echo Refreshing pacman mirrors. This may take some time...
+pacman -S pacman-mirrorlist pacman-contrib
+cp /mnt/etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist.backup
+awk '/^## \(South Korea\|Taiwan\|Hong Kong\|Japan\)$/{f=1}f==0{next}/^$/{exit}{print substr($0, 2)}' /mnt/etc/pacman.d/mirrorlist.backup
+rankmirrors -n 6 /mnt/etc/pacman.d/mirrorlist.backup > /mnt/etc/pacman.d/mirrorlist
+echo Successfully refreshed mirrors
+
+# Chroot into installed linux
+echo
+echo Chrooting into /mnt
+arch-chroot /mnt
+
+# Set time zone
+echo Setting time zone and language
+ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+sed -i '/^#\(ko_KR.UTF-8 UTF-8\|en_US.UTF-8 UTF-8\) /s/^#//g' /etc/locale.gen
+echo LANG=en_US.UTF-8 > /ect/locale.conf
+
+# Create new user and set privileges
+echo Creating new user
+do_proceed="n"
+while [ "${do_proceed}" == "n" ] || [ "${do_proceed}" == "N" ]; do
+	read -p "Please type your username: " username
+	if [ "${username}" == "" ]; then
+		echo Username can\'t be an empty string.
+	else
+		echo Username will be ${username}
+		echo Hostname will be ${username}-pc
+		read -p "Are these correct?(y/n)" do_proceed
+	fi
+done
+
+echo "${username}-pc" >> /etc/hostname
+echo "127.0.0.1 localhost\n::1 localhost\n127.0.1.1 ${username}-pc.org" >> /etc/hosts
+
+useradd ${username} -g users -G storage,wheel,power -m -s /bin/bash
+read -s -p "Enter new password for ${username}: (input is not visible)" userpw
+echo "${userpw}" | passwd --stdin ${username}
+read -s -p "Enter new password for root: (leave empty if you want to use user's pw)" rootpw
+if [ "${rootpw}" != "" ]; then
+	echo "${rootpw}" | passwd --stdin
+else
+	echo "${userpw}" | passwd --stdin
+fi
+
+# Create symlink
+if [[ "${partition_hdd}" != "" ]]; then
+	echo Creating symlinks for the following directories:
+	rm ~/Downloads
+	rm ~/Documents
+	rm ~/Videos
+	rm ~/Pictures
+	rm ~/Music
+	echo ~/Downloads
+	echo ~/Documents
+	echo ~/Videos
+	echo ~/Pictures
+	echo ~/Music
+	ln -s /hdd/Pictures ~/Pictures                                                                        
+	ln -s /hdd/Videos ~/Videos
+	ln -s /hdd/Downloads ~/Downloads
+	ln -s /hdd/Music ~/Music
+	ln -s /hdd/Documents ~/Documents
+fi
+
+# Install packages
+echo Installing packages...
+pacman -Syyu
+pacman -S sudo base-devel git vim wget yajl
+
+echo Installing pamac-AUR for GUI package managing
+cd /tmp
+git clone https://aur.archlinux.org/package-query.git
+cd package-query/
+makepkg -si && cd /tmp/
+git clone https://aur.archlinux.org/yaourt.git
+cd yaourt/
+makepkg -si
+yaourt -S pamac-aur
+
+# Install bootloader
+fdisk -l
+read -p "What is your /boot device name?(Ex. /dev/sda2) " partition_boot
+containsElement "Microsoft" ${fdisk_output[@]}
+res=?
+if [ "${res}" == 1 ]; then
+	echo "has windows"
+else
+	echo "doesn\'t have windows"
+fi
+
+read -p "This system will install Gnome desktop environment(GDM) by default. Continue?(y/n)" install_gdm
+if [ "${install_gdm}" != "n" ] || [ "${install_gdm}" != "N" ]; then
+	pacman -S xorg xorg.server
+	systemctl enable gdm.service
+else
+	echo "You may install any other desktop environment"
+fi
