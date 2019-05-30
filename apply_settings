@@ -1,5 +1,3 @@
-#!bin/bash
-
 # Set time zone
 echo Setting time zone and language
 ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
@@ -73,8 +71,41 @@ yaourt -S pamac-aur
 cd ~" > /home/${username}/Desktop/install_aur
 
 # Install bootloader
+containsElement () {
+  local e match="$1"
+  shift
+  for e; do [[ "$e" == "$match" ]] && return 1; done
+  return 0
+}
+
 fdisk -l
-read -p "What is your /boot device name?(Ex. /dev/sda2) " partition_boot
+fdisk_output=( $(fdisk -l) )
+for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
+	if [[ ${fdisk_output[$i]} =~ "/dev/" ]]; then
+		:
+	else
+		unset fdisk_output[$i]
+	fi
+done
+
+check_flag=0
+while [ "${check_flag}" == 0 ]; do
+	install_grub=1
+	check_flag=1
+	read -p "Enter boot partition(Leave empty if don't want to install bootloader): " partition_boot
+	containsElement "${partition_boot}" "${fdisk_output[@]}"
+	res=$?
+	if [ "${res}" != 1 ] || [ "${partition_boot}" == "" ]; then
+		install_grub=0
+	fi
+
+	if [ "${install_grub}" == 0 ] && [ "${partition_boot}" != "" ]; then
+		echo -e "${GREEN}Boot${NC} device name is incorrect (or does not exist)"
+		check_flag=0
+	fi
+done
+
+fdisk_output=( $(fdisk -l) )
 containsElement "Microsoft" ${fdisk_output[@]}
 res=?
 if [ "${res}" == 1 ]; then
@@ -83,13 +114,21 @@ else
 	echo "doesn\'t have windows"
 fi
 
-while read -r -t 0; do read -r; done
 read -p "This system will install Gnome desktop environment(GDM) by default. Continue?(y/n)" install_gdm
-echo ${install_gdm}
-if [ "${install_gdm}" != "n" ] || [ "${install_gdm}" != "N" ]; then
+if [ "${install_gdm}" != "n" ] && [ "${install_gdm}" != "N" ]; then
 	pacman -S xorg xorg-server
 	pacman -S gnome
 	systemctl enable gdm.service
 else
 	echo "You may install any other desktop environment"
+fi
+
+read -p "Do you want to install fcitx for Korean?(y/n)" install_fcitx
+if [ "${install_fcitx}" != "n" ] && [ "${install_fcitx}" != "N" ]; then
+	pacman -S fcitx fcitx-hangul fcitx-qt5 fcitx-configtool
+fi
+
+read -p "Do you want to install CUDA-toolkit, NVIDIA for development?(y/n)" install_cuda_nvidia
+if [ "${install_cuda_nvidia}" != "n" ] && [ "${install_cuda_nvidia}" != "N" ]; then
+	pacman -S linux nvidia cuda
 fi
