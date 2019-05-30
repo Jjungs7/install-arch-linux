@@ -69,7 +69,8 @@ makepkg -si && cd /tmp/
 git clone https://aur.archlinux.org/yaourt.git
 cd yaourt/
 makepkg -si
-yaourt -S pamac-aur" > /home/${username}/Desktop/install_aur
+yaourt -S pamac-aur
+cd ~" > /home/${username}/Desktop/install_aur
 
 # Install bootloader
 fdisk -l
@@ -82,6 +83,7 @@ else
 	echo "doesn\'t have windows"
 fi
 
+while read -r -t 0; do read -r; done
 read -p "This system will install Gnome desktop environment(GDM) by default. Continue?(y/n)" install_gdm
 echo ${install_gdm}
 if [ "${install_gdm}" != "n" ] || [ "${install_gdm}" != "N" ]; then
