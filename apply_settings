@@ -3,6 +3,7 @@ echo Setting time zone and language
 ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
 sed -i '/^#\(ko_KR.UTF-8 UTF-8\|en_US.UTF-8 UTF-8\) /s/^#//g' /etc/locale.gen
 echo LANG=en_US.UTF-8 > /etc/locale.conf
+locale-gen
 
 # Create new user and set privileges
 echo Creating new user
@@ -36,21 +37,20 @@ fi
 if [[ "${partition_hdd}" != "" ]]; then
 	echo
 	echo Creating symlinks for the following directories:
-	rm ~/Downloads
-	rm ~/Documents
-	rm ~/Videos
-	rm ~/Pictures
-	rm ~/Music
-	echo ~/Downloads
-	echo ~/Documents
-	echo ~/Videos
-	echo ~/Pictures
-	echo ~/Music
-	ln -s /hdd/Pictures ~/Pictures
-	ln -s /hdd/Videos ~/Videos
-	ln -s /hdd/Downloads ~/Downloads
-	ln -s /hdd/Music ~/Music
-	ln -s /hdd/Documents ~/Documents
+	rm /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music
+	echo /home/${username}/Downloads
+	echo /home/${username}/Documents
+	echo /home/${username}/Videos
+	echo /home/${username}/Pictures
+	echo /home/${username}/Music
+
+	mkdir /home/${username}/Desktop
+
+	ln -s /hdd/Pictures /home/${username}/Pictures
+	ln -s /hdd/Videos /home/${username}/Videos
+	ln -s /hdd/Downloads /home/${username}/Downloads
+	ln -s /hdd/Music /home/${username}/Music
+	ln -s /hdd/Documents /home/${username}/Documents
 fi
 
 # Install packages
@@ -69,6 +69,7 @@ cd yaourt/
 makepkg -si
 yaourt -S pamac-aur
 cd ~" > /home/${username}/Desktop/install_aur
+chmod +x /home/${username}/Desktop/install_aur
 
 # Install bootloader
 containsElement () {
@@ -102,17 +103,57 @@ while [ "${check_flag}" == 0 ]; do
 	if [ "${install_grub}" == 0 ] && [ "${partition_boot}" != "" ]; then
 		echo -e "${GREEN}Boot${NC} device name is incorrect (or does not exist)"
 		check_flag=0
-	fi
+		fi
 done
 
-fdisk_output=( $(fdisk -l) )
-containsElement "Microsoft" ${fdisk_output[@]}
-res=?
-if [ "${res}" == 1 ]; then
-	echo "has windows"
-else
-	echo "doesn\'t have windows"
+if [ "${partition_boot}" != "" ]; then
+	fdisk_output=()
+	while IFS= read -r line; do
+	    fdisk_output+=( "$line" )
+	done < <( fdisk -l )
+
+	for line in "${fdisk_output[@]}"; do
+		if [[ $line == *"EFI System"* ]]; then
+			line_split=( $line )
+			partition_boot=${line_split[0]}
+		else
+			partition_boot=""
+		fi
+
+		if [[ $line == *"Microsoft reserved"* ]]; then
+			has_windows=1
+		else
+			has_windows=0
+		fi
+	done
+
+	if [ "${has_windows}" == 1 ]; then
+		pacman -S os-prober
+		mkdir /windows
+		mount ${partition_windows} /windows
+		os-prober
+	fi	
+
+	if [ "${partition_boot}" != "" ]; then
+		# is UEFI
+		pacman -S grub efibootmgr
+		mkdir /esp
+		mount ${partition_boot} /esp
+		grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB
+		grub-mkconfig -o /boot/grub/grub.cfg
+		umount f/esp
+		rm -rf /esp
+	else
+		# TODO:
+		# grub-install --target=i386-pc ${partition_boot}
+	fi
+
+	if [ "${has_windows}" == 1 ]; then
+		umount /windows
+		rm -rf /windows
+	fi
 fi
+
 
 read -p "This system will install Gnome desktop environment(GDM) by default. Continue?(y/n)" install_gdm
 if [ "${install_gdm}" != "n" ] && [ "${install_gdm}" != "N" ]; then
