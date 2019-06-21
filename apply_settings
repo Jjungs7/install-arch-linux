@@ -1,3 +1,10 @@
+
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+NC='\033[0m'
+
 # Set time zone
 echo Setting time zone and language
 ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
@@ -37,20 +44,35 @@ fi
 if [[ "${partition_hdd}" != "" ]]; then
 	echo
 	echo Creating symlinks for the following directories:
-	rm /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music
+	rm -rf /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music /home/${username}/Desktop
+
+	echo /home/${username}/Desktop
 	echo /home/${username}/Downloads
 	echo /home/${username}/Documents
 	echo /home/${username}/Videos
 	echo /home/${username}/Pictures
 	echo /home/${username}/Music
 
+	mkdir /home/${username}/Downloads
+	mkdir /home/${username}/Documents
+	mkdir /home/${username}/Videos
+	mkdir /home/${username}/Pictures
+	mkdir /home/${username}/Music
 	mkdir /home/${username}/Desktop
 
+	ln -s /hdd/Desktop /home/${username}/Desktop
 	ln -s /hdd/Pictures /home/${username}/Pictures
 	ln -s /hdd/Videos /home/${username}/Videos
 	ln -s /hdd/Downloads /home/${username}/Downloads
 	ln -s /hdd/Music /home/${username}/Music
 	ln -s /hdd/Documents /home/${username}/Documents
+
+	chown -R ${username}:users /home/${username}/Downloads
+	chown -R ${username}:users /home/${username}/Documents
+	chown -R ${username}:users /home/${username}/Videos
+	chown -R ${username}:users /home/${username}/Pictures
+	chown -R ${username}:users /home/${username}/Music
+	chown -R ${username}:users /home/${username}/Desktop
 fi
 
 # Install packages
@@ -155,7 +177,7 @@ if [ "${partition_boot}" != "" ]; then
 fi
 
 
-read -p "This system will install Gnome desktop environment(GDM) by default. Continue?(y/n)" install_gdm
+read -p "This system will install Gnome desktop environment(gdm) by default. Continue?(y/n)" install_gdm
 if [ "${install_gdm}" != "n" ] && [ "${install_gdm}" != "N" ]; then
 	pacman -S xorg xorg-server
 	pacman -S gnome
@@ -164,12 +186,8 @@ else
 	echo "You may install any other desktop environment"
 fi
 
-read -p "Do you want to install fcitx for Korean?(y/n)" install_fcitx
-if [ "${install_fcitx}" != "n" ] && [ "${install_fcitx}" != "N" ]; then
-	pacman -S fcitx fcitx-hangul fcitx-qt5 fcitx-configtool
-fi
-
-read -p "Do you want to install CUDA-toolkit, NVIDIA for development?(y/n)" install_cuda_nvidia
+echo "Do you want to install CUDA_toolkit, NVIDIA for development? Please note that this includes the latest version of linux"
+read -p "Install?(y/n)" install_cuda_nvidia
 if [ "${install_cuda_nvidia}" != "n" ] && [ "${install_cuda_nvidia}" != "N" ]; then
 	pacman -S linux nvidia cuda
 fi
