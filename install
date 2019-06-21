@@ -12,14 +12,13 @@ COUNTRY_CODES=('KR', 'TW', 'HK', 'JP') # TODO: use selected countries
 
 
 # Welcome
-echo This script will install arch linux on your system
-echo -e "Please make sure that your booting system is ${RED}UEFI${NC} based"
-echo
-echo "    # If you are using BIOS then you can comment bootloader specific lines"
-echo "    # and install bootloader for yourself"
+echo "The system will not install bootloader YET. It is going to be implemented soon"
+echo "You may install bootloader for yourself"
+echo "Please take a look at this page: https://wiki.archlinux.org/index.php/GRUB"
+echo "Before we implement automatic bootloader installation"
 echo
 echo "To automatically install programs, you may need to get connected to the internet"
-echo Otherwise you may have to install for yourself
+echo Otherwise Arch linux may not be installed correctly
 echo
 echo "    # You can check your internet connection with the following command"
 echo "    # ping archlinux.org"
