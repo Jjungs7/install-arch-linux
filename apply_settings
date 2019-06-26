@@ -75,14 +75,14 @@ chown -R ${username}:users /home/${username}/Pictures
 chown -R ${username}:users /home/${username}/Music
 chown -R ${username}:users /home/${username}/Desktop
 
-echo Changing sudo privileges
-sed -i 's/^# %sudo ALL=(ALL) ALL/%sudo ALL=(ALL) ALL/' /etc/sudoers
-
 # Install packages
 echo Installing packages...
 pacman -Syyu
 pacman -S base-devel
 yes | pacman -S sudo git vim wget yajl > dev/null
+
+echo Changing sudo privileges
+sed -i 's/^# %sudo ALL=(ALL) ALL/%sudo ALL=(ALL) ALL/' /etc/sudoers
 
 echo "echo Installing pamac-AUR for GUI package managing
 cd /tmp
@@ -126,7 +126,6 @@ while [ "${check_flag}" == 0 ]; do
 	install_grub=1
 	check_flag=1
 	echo
-	echo -e "ex) ${BLUE}/dev/sda4${NC}"
 	read -p "What is your boot system based?(bios/uefi) " boot_type
 	containsElement "${boot_type}" "${boot_types[@]}"
 	res=$?
@@ -158,13 +157,15 @@ if [ "${has_windows}" != "n" ] && [ "${has_windows}" != "N" ]; then
 		fi
 	done
 
-	pacman -S os-prober
-	mkdir /windows
-	mount ${partition_windows} /windows
-	os-prober
+	if [ "${partition_windows}" != "" ]; then
+		pacman -S os-prober
+		mkdir /windows
+		mount ${partition_windows} /windows
+		os-prober
+	fi
 fi	
 
-pacman -S grub
+yes | pacman -S grub
 if [ "${boot_type}" == "uefi" ]; then
 	fdisk -l
 	check_flag=0
@@ -186,7 +187,7 @@ if [ "${boot_type}" == "uefi" ]; then
 	done
 
 	if [ "${partition_boot}" != "" ]; then
-		pacman -S efibootmgr
+		yes | pacman -S efibootmgr
 		mkdir /esp
 		mount ${partition_boot} /esp
 		grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB
@@ -229,7 +230,7 @@ elif [ "${boot_type}" == "bios" ]; then
 	fi
 fi
 
-if [ "${has_windows}" != "n" ] && [ "${has_windows}" != "N" ]; then
+if [ "${partition_windows}" != "" ]; then
 	umount /windows
 	rm -rf /windows
 fi
