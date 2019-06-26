@@ -162,11 +162,15 @@ echo
 echo Mounting remaining partitions
 mkdir /mnt/hdd
 mkfs.ext4 ${partition_home} > /dev/null
-mkfs.ext4 ${partition_hdd} > /dev/null
-mkswap ${partition_swap} > /dev/null
-swapon ${partition_swap} > /dev/null
 mount ${partition_home} /mnt/home > /dev/null
-mount ${partition_hdd} /mnt/hdd > /dev/null
+if [ "${partition_hdd}" != "" ]; then
+	mkfs.ext4 ${partition_hdd} > /dev/null
+	mount ${partition_hdd} /mnt/hdd > /dev/null
+fi
+if [ "${partition_swap}" != "" ]; then
+	mkswap ${partition_swap} > /dev/null
+	swapon ${partition_swap} > /dev/null
+fi
 genfstab -U /mnt >> /mnt/etc/fstab > /dev/null
 
 # Change pacman mirror
@@ -174,15 +178,19 @@ cat /etc/pacman.d/mirrorlist > /mnt/etc/pacman.d/mirrorlist
 
 # Chroot into installed linux
 echo "#!bin/bash
+
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 NC='\033[0m'
+
 partition_root=\"${partition_root}\"
 partition_home=\"${partition_home}\"
 partition_swap=\"${partition_swap}\"
-partition_hdd=\"${partition_hdd}\"\n\n" | cat - apply_settings > temp && mv temp apply_settings
+partition_hdd=\"${partition_hdd}\"
+
+" | cat - apply_settings > temp && mv temp apply_settings
 
 chmod +x apply_settings
 cp ./apply_settings /mnt

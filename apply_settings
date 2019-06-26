@@ -1,10 +1,3 @@
-
-RED='\033[1;31m'
-GREEN='\033[1;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[1;34m'
-NC='\033[0m'
-
 # Set time zone
 echo Setting time zone and language
 ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
@@ -29,7 +22,8 @@ done
 echo "${username}-pc" >> /etc/hostname
 echo "127.0.0.1 localhost\n::1 localhost\n127.0.1.1 ${username}-pc.org" >> /etc/hosts
 
-useradd ${username} -g users -G storage,wheel,power -m -s /bin/bash
+groupadd sudo
+useradd ${username} -g users -G storage,wheel,power,sudo -m -s /bin/bash
 read -s -p "Enter new password for ${username}: (input is not visible)" userpw
 echo ${username}:${userpw} | chpasswd
 echo
@@ -40,12 +34,12 @@ else
 	echo "root:${userpw}" | chpasswd
 fi
 
-# Create symlink
+
+rm -rf /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music /home/${username}/Desktop
 if [[ "${partition_hdd}" != "" ]]; then
+	# Create symlink
 	echo
 	echo Creating symlinks for the following directories:
-	rm -rf /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music /home/${username}/Desktop
-
 	echo /home/${username}/Desktop
 	echo /home/${username}/Downloads
 	echo /home/${username}/Documents
@@ -53,12 +47,12 @@ if [[ "${partition_hdd}" != "" ]]; then
 	echo /home/${username}/Pictures
 	echo /home/${username}/Music
 
-	mkdir /home/${username}/Downloads
-	mkdir /home/${username}/Documents
-	mkdir /home/${username}/Videos
-	mkdir /home/${username}/Pictures
-	mkdir /home/${username}/Music
-	mkdir /home/${username}/Desktop
+	mkdir /hdd/Downloads
+	mkdir /hdd/Documents
+	mkdir /hdd/Videos
+	mkdir /hdd/Pictures
+	mkdir /hdd/Music
+	mkdir /hdd/Desktop
 
 	ln -s /hdd/Desktop /home/${username}/Desktop
 	ln -s /hdd/Pictures /home/${username}/Pictures
@@ -66,14 +60,23 @@ if [[ "${partition_hdd}" != "" ]]; then
 	ln -s /hdd/Downloads /home/${username}/Downloads
 	ln -s /hdd/Music /home/${username}/Music
 	ln -s /hdd/Documents /home/${username}/Documents
-
-	chown -R ${username}:users /home/${username}/Downloads
-	chown -R ${username}:users /home/${username}/Documents
-	chown -R ${username}:users /home/${username}/Videos
-	chown -R ${username}:users /home/${username}/Pictures
-	chown -R ${username}:users /home/${username}/Music
-	chown -R ${username}:users /home/${username}/Desktop
+else
+	mkdir /home/${username}/Downloads
+	mkdir /home/${username}/Documents
+	mkdir /home/${username}/Videos
+	mkdir /home/${username}/Pictures
+	mkdir /home/${username}/Music
+	mkdir /home/${username}/Desktop
 fi
+chown -R ${username}:users /home/${username}/Downloads
+chown -R ${username}:users /home/${username}/Documents
+chown -R ${username}:users /home/${username}/Videos
+chown -R ${username}:users /home/${username}/Pictures
+chown -R ${username}:users /home/${username}/Music
+chown -R ${username}:users /home/${username}/Desktop
+
+echo Changing sudo privileges
+sed -i 's/^# %sudo ALL=(ALL) ALL/%sudo ALL=(ALL) ALL/' /etc/sudoers
 
 # Install packages
 echo Installing packages...
@@ -111,81 +114,140 @@ for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
 	fi
 done
 
+echo
+echo
+fdisk -l
+echo -e "# Bootloader installation"
+echo -e "Hint: check for 'EFI system' in your main(/dev/sda or /dev/nvme0n1p) partition list"
+
+boot_types=("bios" "uefi" "BIOS" "UEFI")
 check_flag=0
 while [ "${check_flag}" == 0 ]; do
 	install_grub=1
 	check_flag=1
-	read -p "Enter boot partition(Leave empty if don't want to install bootloader): " partition_boot
-	containsElement "${partition_boot}" "${fdisk_output[@]}"
+	echo
+	echo -e "ex) ${BLUE}/dev/sda4${NC}"
+	read -p "What is your boot system based?(bios/uefi) " boot_type
+	containsElement "${boot_type}" "${boot_types[@]}"
 	res=$?
-	if [ "${res}" != 1 ] || [ "${partition_boot}" == "" ]; then
-		install_grub=0
-	fi
-
-	if [ "${install_grub}" == 0 ] && [ "${partition_boot}" != "" ]; then
-		echo -e "${GREEN}Boot${NC} device name is incorrect (or does not exist)"
+	if [ "${res}" != 1 ]; then
+		echo -e "Please type between ${BLUE}uefi${NC} or ${RED}bios${NC}"
 		check_flag=0
-		fi
+	fi
 done
 
-if [ "${partition_boot}" != "" ]; then
-	fdisk_output=()
-	while IFS= read -r line; do
-	    fdisk_output+=( "$line" )
-	done < <( fdisk -l )
-
-	for line in "${fdisk_output[@]}"; do
-		if [[ $line == *"EFI System"* ]]; then
-			line_split=( $line )
-			partition_boot=${line_split[0]}
-		else
-			partition_boot=""
+read -p "Is Windows installed in your system?(y/n)" has_windows
+if [ "${has_windows}" != "n" ] && [ "${has_windows}" != "N" ]; then
+	fdisk -l
+	check_flag=0
+	while [ "${check_flag}" == 0 ]; do
+		install_grub=1
+		check_flag=1
+		echo
+		echo -e "ex) ${BLUE}/dev/sda4${NC}"
+		read -p "Enter Windows C:/ partition(Leave blank if it does not exist): " partition_windows
+		containsElement "${partition_windows}" "${fdisk_output[@]}"
+		res=$?
+		if [ "${res}" != 1 ] || [ "${partition_windows}" == "" ]; then
+			install_grub=0
 		fi
 
-		if [[ $line == *"Microsoft reserved"* ]]; then
-			has_windows=1
-		else
-			has_windows=0
+		if [ "${install_grub}" == 0 ] && [ "${partition_windows}" != "" ]; then
+			echo -e "${BLUE}Windows${NC} device name is incorrect (or does not exist)"
+			check_flag=0
 		fi
 	done
 
-	if [ "${has_windows}" == 1 ]; then
-		pacman -S os-prober
-		mkdir /windows
-		mount ${partition_windows} /windows
-		os-prober
-	fi	
+	pacman -S os-prober
+	mkdir /windows
+	mount ${partition_windows} /windows
+	os-prober
+fi	
+
+pacman -S grub
+if [ "${boot_type}" == "uefi" ]; then
+	fdisk -l
+	check_flag=0
+	while [ "${check_flag}" == 0 ]; do
+		install_bootloader=1
+		check_flag=1
+		echo -e "ex) ${GREEN}/dev/sda2${NC}"
+		read -p "Enter boot partition: " partition_boot
+		containsElement "${partition_boot}" "${fdisk_output[@]}"
+		res=$?
+		if [ "${res}" != 1 ] || [ "${partition_boot}" == "" ]; then
+			install_bootloader=0
+		fi
+
+		if [ "${install_bootloader}" == 0 ] && [ "${partition_boot}" != "" ]; then
+			echo -e "${GREEN}Boot${NC} device name is incorrect (or does not exist)"
+			check_flag=0
+		fi
+	done
 
 	if [ "${partition_boot}" != "" ]; then
-		# is UEFI
-		pacman -S grub efibootmgr
+		pacman -S efibootmgr
 		mkdir /esp
 		mount ${partition_boot} /esp
 		grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB
 		grub-mkconfig -o /boot/grub/grub.cfg
-		umount f/esp
+		umount /esp
 		rm -rf /esp
 	else
-		# TODO:
-		# grub-install --target=i386-pc ${partition_boot}
+		echo You may install bootloader for yourself
 	fi
 
-	if [ "${has_windows}" == 1 ]; then
-		umount /windows
-		rm -rf /windows
+elif [ "${boot_type}" == "bios" ]; then
+	for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
+		if [[ ${fdisk_output[$i]} =~ "[0-9]$" ]]; then
+			unset fdisk_output[$i]
+		fi
+	done
+	echo "${fdisk_output[*]}"
+
+	check_flag=0
+	while [ "${check_flag}" == 0 ]; do
+		install_grub=1
+		check_flag=1
+		echo -e "ex) ${BLUE}/dev/sda${NC}"
+		read -p "Enter boot 'DISK' partition(no number at the end): " partition_boot
+		containsElement "${partition_boot}" "${fdisk_output[@]}"
+		res=$?
+		if [ "${res}" != 1 ] || [ "${partition_boot}" == "" ]; then
+			install_grub=0
+		fi
+
+		if [ "${install_grub}" == 0 ] && [ "${partition_boot}" != "" ]; then
+			echo -e "${GREEN}Boot${NC} device name is incorrect (or does not exist)"
+			check_flag=0
+		fi
+	done
+
+	if [ "${partition_boot}" != "" ]; then
+		pacman -S grub
+		grub-install --target=i386-pc ${partition_boot}
 	fi
 fi
 
+if [ "${has_windows}" != "n" ] && [ "${has_windows}" != "N" ]; then
+	umount /windows
+	rm -rf /windows
+fi
 
+echo
+echo
 read -p "This system will install Gnome desktop environment(gdm) by default. Continue?(y/n)" install_gdm
 if [ "${install_gdm}" != "n" ] && [ "${install_gdm}" != "N" ]; then
 	pacman -S xorg xorg-server
 	pacman -S gnome
 	systemctl enable gdm.service
+	pacman -S gnome-tweaks
 else
 	echo "You may install any other desktop environment"
 fi
 
+echo
+echo
 echo "Do you want to install CUDA_toolkit, NVIDIA for development? Please note that this includes the latest version of linux"
 read -p "Install?(y/n)" install_cuda_nvidia
 if [ "${install_cuda_nvidia}" != "n" ] && [ "${install_cuda_nvidia}" != "N" ]; then
