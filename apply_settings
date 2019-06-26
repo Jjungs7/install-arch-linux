@@ -79,7 +79,7 @@ chown -R ${username}:users /home/${username}/Desktop
 echo Installing packages...
 pacman -Syyu
 pacman -S base-devel
-yes | pacman -S sudo git vim wget yajl > dev/null
+yes | pacman -S git vim wget yajl > dev/null
 
 echo Changing sudo privileges
 sed -i 's/^# %sudo ALL=(ALL) ALL/%sudo ALL=(ALL) ALL/' /etc/sudoers
@@ -104,7 +104,6 @@ containsElement () {
   return 0
 }
 
-fdisk -l
 fdisk_output=( $(fdisk -l) )
 for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
 	if [[ ${fdisk_output[$i]} =~ "/dev/" ]]; then
@@ -114,9 +113,9 @@ for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
 	fi
 done
 
-echo
-echo
 fdisk -l
+echo
+echo
 echo -e "# Bootloader installation"
 echo -e "Hint: check for 'EFI system' in your main(/dev/sda or /dev/nvme0n1p) partition list"
 
@@ -125,12 +124,12 @@ check_flag=0
 while [ "${check_flag}" == 0 ]; do
 	install_grub=1
 	check_flag=1
-	echo
 	read -p "What is your boot system based?(bios/uefi) " boot_type
 	containsElement "${boot_type}" "${boot_types[@]}"
 	res=$?
 	if [ "${res}" != 1 ]; then
 		echo -e "Please type between ${BLUE}uefi${NC} or ${RED}bios${NC}"
+		echo
 		check_flag=0
 	fi
 done
@@ -165,7 +164,7 @@ if [ "${has_windows}" != "n" ] && [ "${has_windows}" != "N" ]; then
 	fi
 fi	
 
-yes | pacman -S grub
+yes | pacman -S grub intel-ucode
 if [ "${boot_type}" == "uefi" ]; then
 	fdisk -l
 	check_flag=0
@@ -242,7 +241,7 @@ if [ "${install_gdm}" != "n" ] && [ "${install_gdm}" != "N" ]; then
 	pacman -S xorg xorg-server
 	pacman -S gnome
 	systemctl enable gdm.service
-	pacman -S gnome-tweaks
+	yes | pacman -S gnome-tweaks
 else
 	echo "You may install any other desktop environment"
 fi
