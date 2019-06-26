@@ -164,7 +164,15 @@ if [ "${has_windows}" != "n" ] && [ "${has_windows}" != "N" ]; then
 	fi
 fi	
 
-yes | pacman -S grub intel-ucode
+output=$( lscpu )
+if [[ "${output}" == *"Intel"* ]]; then
+	yes | pacman -S intel-ucode
+fi
+
+if [[ "${output}" == *"AMD"* ]]; then
+	yes | pacman -S amd-ucode
+fi
+
 if [ "${boot_type}" == "uefi" ]; then
 	fdisk -l
 	check_flag=0
@@ -186,7 +194,11 @@ if [ "${boot_type}" == "uefi" ]; then
 	done
 
 	if [ "${partition_boot}" != "" ]; then
-		yes | pacman -S efibootmgr
+		file_output=$( file -sL "${partition_boot}" )
+		if [[ "${partition_boot}" != *"FAT"* ]]; then
+			mkfs.fat -F32 "${partition_boot}"
+		fi
+		yes | pacman -S grub efibootmgr
 		mkdir /esp
 		mount ${partition_boot} /esp
 		grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB
