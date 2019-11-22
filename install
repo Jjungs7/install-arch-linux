@@ -138,14 +138,17 @@ while [ "${check_flag}" == 0 ]; do
 	fi
 done
 
+read -p "Please type your username: " username
+read -s -p "Enter new password for ${username}: (input is not visible)" userpw
+
 # Format and mount root
 echo
 echo Mounting created partition onto /mnt
-mkfs.ext4 ${partition_root} > /dev/null
-mount ${partition_root} /mnt > /dev/null
+mkfs.ext4 ${partition_root}
+mount ${partition_root} /mnt
 
 # Change pacman mirror of live Linux
-yes | pacman -S pacman-contrib > /dev/null
+yes | pacman -S pacman-contrib
 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
 echo Refreshing pacman mirrors. This may take some time...
 curl -s "https://www.archlinux.org/mirrorlist/?country=KR&country=TW&country=HK&country=JP&protocol=https&ip_version=4&use_mirror_status=on" | sed -e 's/^#Server/Server/' | rankmirrors -n 6 - > /etc/pacman.d/mirrorlist
@@ -188,6 +191,8 @@ partition_root=\"${partition_root}\"
 partition_home=\"${partition_home}\"
 partition_swap=\"${partition_swap}\"
 partition_hdd=\"${partition_hdd}\"
+username=\"${username}\"
+userpw=\"${password}\"
 " | cat - apply_settings > temp && mv temp apply_settings
 
 chmod +x apply_settings
