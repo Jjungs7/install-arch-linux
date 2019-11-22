@@ -14,8 +14,7 @@ echo ${username}:${userpw} | chpasswd
 echo "root:${userpw}" | chpasswd
 
 echo "chowning /hdd..."
-rm -rf /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music /home/${username}/Desktop
-ln -s /hdd/Desktop /home/${username}/Desktop
+rm -rf /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music
 ln -s /hdd/Pictures /home/${username}/Pictures
 ln -s /hdd/Videos /home/${username}/Videos
 ln -s /hdd/Downloads /home/${username}/Downloads
@@ -26,28 +25,16 @@ chown -R ${username}:users /hdd
 # Install packages
 echo Installing packages...
 pacman -Syyu
-yes | pacman -S git vim wget yajl base-devel linux
+echo "\n" | pacman -S base-devel
+yes | pacman -S wget yajl linux sudo
 
 echo Changing sudo privileges
 sed -i 's/^# %sudo ALL=(ALL) ALL/%sudo ALL=(ALL) ALL/' /etc/sudoers
 
-echo "echo Installing pamac-AUR for GUI package managing
-cd /tmp
-git clone https://aur.archlinux.org/package-query.git
-cd package-query/
-makepkg -si && cd /tmp/
-git clone https://aur.archlinux.org/yaourt.git
-cd yaourt/
-makepkg -si
-yaourt -S pamac-aur
-cd ~" > /hdd/Desktop/install_aur
-chmod +x /hdd/Desktop/install_aur
-
-yes | pacman -S grub efibootmgr os-prober
+yes | pacman -S grub efibootmgr os-prober intel-ucode
 mkdir /windows
 mount /dev/sda4 /windows
 os-prober
-yes | pacman -S intel-ucode
 
 mkdir /esp
 mount ${partition_boot} /esp
@@ -58,5 +45,7 @@ rm -rf /esp
 umount /windows
 rm -rf /windows
 
-echo "\n" | pacman -S xorg xorg-server gnome gnome-tweaks nvidia cuda
+echo "\n" | pacman -S xorg xorg-server gnome gnome-tweaks dhcpcd
 systemctl enable gdm.service
+systemctl enable systemd-networkd.service
+systemctl enable dhcpcd.service

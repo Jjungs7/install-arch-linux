@@ -7,55 +7,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 NC='\033[0m'
 
-AVAILABLE_COUNTRY_CODES=() # TODO
-COUNTRY_CODES=('KR', 'TW', 'HK', 'JP') # TODO: use selected countries
-
-
-# Welcome
-echo "The system will not install bootloader YET. It is going to be implemented soon"
-echo "You may install bootloader for yourself"
-echo "Please take a look at this page: https://wiki.archlinux.org/index.php/GRUB"
-echo "Before we implement automatic bootloader installation"
-echo
-echo "To automatically install programs, you may need to get connected to the internet"
-echo Otherwise Arch linux may not be installed correctly
-echo
-echo "    # You can check your internet connection with the following command"
-echo "    # ping archlinux.org"
-echo
-read -p "Do you want to proceed with the installation?(y/n)" do_install
-
-if [ "${do_install}" == "n" ] || [ "${do_install}" == "N" ]; then
-	exit
-fi
-
-echo
-echo
-echo "This script needs you to make partitions manually."
-echo -e "You can make(or change, delete) partitions with tools like ${BLUE}cfdisk${NC} or ${BLUE}parted${NC}"
-echo
-read -p "Are your partitions ready for installation?(y/n)" is_ready
-if [ "${is_ready}" == "n" ] || [ "${is_ready}" == "N" ]; then
-	echo
-	echo
-	echo "Please make sure all partitions are ready"
-	echo "Recommended partitions to create are:"
-	echo
-	echo /
-	echo /home
-	echo "/hdd (if any)"
-	echo "swap (if any)"
-	echo
-	echo "    # Swap partitions usually have size of (ram_size * 2)"
-	echo "    # / and /home partitions are relatively smaller than /hdd"
-	echo "    # OS, user programs are stored in a SSD(/, /home) and multimedia files in a HDD(/hdd)"
-	echo "    # swap partitions are specially needed if you use a lot of memory(ex. computer vision tasks)"
-	echo "    # and it is recommended to create the swap partition in HDD"
-	echo
-	echo "If you don't have /boot (It has to be EFI system partition) You may create a partition for /boot too"
-	echo "Check how to in this link https://bit.ly/2ExmFid"
-	exit
-fi
 
 # Get partitions
 containsElement () {
@@ -67,8 +18,7 @@ containsElement () {
 
 fdisk -l
 echo
-echo "Please enter the device names for your partition. (/dev/sdaX or /dev/nvme0n1pX. X is partition number)"
-echo -e "Ex) ${BLUE}/dev/sda5${NC}"
+echo "Please enter the device names."
 echo -e "${RED}root${NC} and ${YELLOW}home${NC} partitions are required"
 check_flag=0
 fdisk_output=( $(fdisk -l) )
@@ -192,7 +142,7 @@ partition_home=\"${partition_home}\"
 partition_swap=\"${partition_swap}\"
 partition_hdd=\"${partition_hdd}\"
 username=\"${username}\"
-userpw=\"${password}\"
+userpw=\"${userpw}\"
 " | cat - apply_settings > temp && mv temp apply_settings
 
 chmod +x apply_settings
