@@ -164,7 +164,6 @@ mkfs.ext4 ${partition_home}
 mount ${partition_home} /mnt/home
 if [ "${partition_hdd}" != "" ]; then
 	mkdir /mnt/hdd
-	mkfs.ext4 ${partition_hdd}
 	mount ${partition_hdd} /mnt/hdd
 fi
 if [ "${partition_swap}" != "" ]; then

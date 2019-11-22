@@ -36,44 +36,13 @@ fi
 
 
 rm -rf /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music /home/${username}/Desktop
-if [[ "${partition_hdd}" != "" ]]; then
-	# Create symlink
-	echo
-	echo Creating symlinks for the following directories:
-	echo /home/${username}/Desktop
-	echo /home/${username}/Downloads
-	echo /home/${username}/Documents
-	echo /home/${username}/Videos
-	echo /home/${username}/Pictures
-	echo /home/${username}/Music
-
-	mkdir /hdd/Downloads
-	mkdir /hdd/Documents
-	mkdir /hdd/Videos
-	mkdir /hdd/Pictures
-	mkdir /hdd/Music
-	mkdir /hdd/Desktop
-
-	ln -s /hdd/Desktop /home/${username}/Desktop
-	ln -s /hdd/Pictures /home/${username}/Pictures
-	ln -s /hdd/Videos /home/${username}/Videos
-	ln -s /hdd/Downloads /home/${username}/Downloads
-	ln -s /hdd/Music /home/${username}/Music
-	ln -s /hdd/Documents /home/${username}/Documents
-else
-	mkdir /home/${username}/Downloads
-	mkdir /home/${username}/Documents
-	mkdir /home/${username}/Videos
-	mkdir /home/${username}/Pictures
-	mkdir /home/${username}/Music
-	mkdir /home/${username}/Desktop
-fi
-chown -R ${username}:users /home/${username}/Downloads
-chown -R ${username}:users /home/${username}/Documents
-chown -R ${username}:users /home/${username}/Videos
-chown -R ${username}:users /home/${username}/Pictures
-chown -R ${username}:users /home/${username}/Music
-chown -R ${username}:users /home/${username}/Desktop
+ln -s /hdd/Desktop /home/${username}/Desktop
+ln -s /hdd/Pictures /home/${username}/Pictures
+ln -s /hdd/Videos /home/${username}/Videos
+ln -s /hdd/Downloads /home/${username}/Downloads
+ln -s /hdd/Music /home/${username}/Music
+ln -s /hdd/Documents /home/${username}/Documents
+chown -R ${username}:users /hdd
 
 # Install packages
 echo Installing packages...
@@ -93,175 +62,29 @@ git clone https://aur.archlinux.org/yaourt.git
 cd yaourt/
 makepkg -si
 yaourt -S pamac-aur
-cd ~" > /home/${username}/Desktop/install_aur
-chmod +x /home/${username}/Desktop/install_aur
+cd ~" > /hdd/Desktop/install_aur
+chmod +x /hdd/Desktop/install_aur
 
-# Install bootloader
-containsElement () {
-  local e match="$1"
-  shift
-  for e; do [[ "$e" == "$match" ]] && return 1; done
-  return 0
-}
+pacman -S os-prober
+mkdir /windows
+mount ${partition_windows} /windows
+os-prober
+yes | pacman -S intel-ucode
 
-fdisk_output=( $(fdisk -l) )
-for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
-	if [[ ${fdisk_output[$i]} =~ "/dev/" ]]; then
-		:
-	else
-		unset fdisk_output[$i]
-	fi
-done
+mkfs.fat -F32 "${partition_boot}"
+yes | pacman -S grub efibootmgr
+mkdir /esp
+mount ${partition_boot} /esp
+grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
+umount /esp
+rm -rf /esp
 
-fdisk -l
-echo
-echo
-echo -e "# Bootloader installation"
-echo -e "Hint: check for 'EFI system' in your main(/dev/sda or /dev/nvme0n1p) partition list"
+umount /windows
+rm -rf /windows
 
-boot_types=("bios" "uefi" "BIOS" "UEFI")
-check_flag=0
-while [ "${check_flag}" == 0 ]; do
-	install_grub=1
-	check_flag=1
-	read -p "What is your boot system based?(bios/uefi) " boot_type
-	containsElement "${boot_type}" "${boot_types[@]}"
-	res=$?
-	if [ "${res}" != 1 ]; then
-		echo -e "Please type between ${BLUE}uefi${NC} or ${RED}bios${NC}"
-		echo
-		check_flag=0
-	fi
-done
-
-read -p "Is Windows installed in your system?(y/n)" has_windows
-if [ "${has_windows}" != "n" ] && [ "${has_windows}" != "N" ]; then
-	fdisk -l
-	check_flag=0
-	while [ "${check_flag}" == 0 ]; do
-		install_grub=1
-		check_flag=1
-		echo
-		echo -e "ex) ${BLUE}/dev/sda4${NC}"
-		read -p "Enter Windows C:/ partition(Leave blank if it does not exist): " partition_windows
-		containsElement "${partition_windows}" "${fdisk_output[@]}"
-		res=$?
-		if [ "${res}" != 1 ] || [ "${partition_windows}" == "" ]; then
-			install_grub=0
-		fi
-
-		if [ "${install_grub}" == 0 ] && [ "${partition_windows}" != "" ]; then
-			echo -e "${BLUE}Windows${NC} device name is incorrect (or does not exist)"
-			check_flag=0
-		fi
-	done
-
-	if [ "${partition_windows}" != "" ]; then
-		pacman -S os-prober
-		mkdir /windows
-		mount ${partition_windows} /windows
-		os-prober
-	fi
-fi	
-
-output=$( lscpu )
-if [[ "${output}" == *"Intel"* ]]; then
-	yes | pacman -S intel-ucode
-fi
-
-if [[ "${output}" == *"AMD"* ]]; then
-	yes | pacman -S amd-ucode
-fi
-
-if [ "${boot_type}" == "uefi" ]; then
-	fdisk -l
-	check_flag=0
-	while [ "${check_flag}" == 0 ]; do
-		install_bootloader=1
-		check_flag=1
-		echo -e "ex) ${GREEN}/dev/sda2${NC}"
-		read -p "Enter boot partition: " partition_boot
-		containsElement "${partition_boot}" "${fdisk_output[@]}"
-		res=$?
-		if [ "${res}" != 1 ] || [ "${partition_boot}" == "" ]; then
-			install_bootloader=0
-		fi
-
-		if [ "${install_bootloader}" == 0 ] && [ "${partition_boot}" != "" ]; then
-			echo -e "${GREEN}Boot${NC} device name is incorrect (or does not exist)"
-			check_flag=0
-		fi
-	done
-
-	if [ "${partition_boot}" != "" ]; then
-		file_output=$( file -sL "${partition_boot}" )
-		if [[ "${partition_boot}" != *"FAT"* ]]; then
-			mkfs.fat -F32 "${partition_boot}"
-		fi
-		yes | pacman -S grub efibootmgr
-		mkdir /esp
-		mount ${partition_boot} /esp
-		grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB
-		grub-mkconfig -o /boot/grub/grub.cfg
-		umount /esp
-		rm -rf /esp
-	else
-		echo You may install bootloader for yourself
-	fi
-
-elif [ "${boot_type}" == "bios" ]; then
-	for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
-		if [[ ${fdisk_output[$i]} =~ "[0-9]$" ]]; then
-			unset fdisk_output[$i]
-		fi
-	done
-	echo "${fdisk_output[*]}"
-
-	check_flag=0
-	while [ "${check_flag}" == 0 ]; do
-		install_grub=1
-		check_flag=1
-		echo -e "ex) ${BLUE}/dev/sda${NC}"
-		read -p "Enter boot 'DISK' partition(no number at the end): " partition_boot
-		containsElement "${partition_boot}" "${fdisk_output[@]}"
-		res=$?
-		if [ "${res}" != 1 ] || [ "${partition_boot}" == "" ]; then
-			install_grub=0
-		fi
-
-		if [ "${install_grub}" == 0 ] && [ "${partition_boot}" != "" ]; then
-			echo -e "${GREEN}Boot${NC} device name is incorrect (or does not exist)"
-			check_flag=0
-		fi
-	done
-
-	if [ "${partition_boot}" != "" ]; then
-		pacman -S grub
-		grub-install --target=i386-pc ${partition_boot}
-	fi
-fi
-
-if [ "${partition_windows}" != "" ]; then
-	umount /windows
-	rm -rf /windows
-fi
-
-echo
-echo
-read -p "This system will install Gnome desktop environment(gdm) by default. Continue?(y/n)" install_gdm
-if [ "${install_gdm}" != "n" ] && [ "${install_gdm}" != "N" ]; then
-	pacman -S xorg xorg-server
-	pacman -S gnome
-	systemctl enable gdm.service
-	yes | pacman -S gnome-tweaks
-else
-	echo "You may install any other desktop environment"
-fi
-
-echo
-echo
-echo "Do you want to install CUDA_toolkit, NVIDIA for development? Please note that this includes the latest version of linux"
-read -p "Install?(y/n)" install_cuda_nvidia
-if [ "${install_cuda_nvidia}" != "n" ] && [ "${install_cuda_nvidia}" != "N" ]; then
-	pacman -S linux nvidia cuda
-fi
+pacman -S xorg xorg-server
+pacman -S gnome
+systemctl enable gdm.service
+yes | pacman -S gnome-tweaks
+pacman -S linux nvidia cuda
