@@ -23,3 +23,5 @@ yaourt -S gnome-shell-extension-no-topleft-hot-corner gnome-shell-extension-desk
 # vimrc
 wget https://gist.githubusercontent.com/Jjungs7/e777614c1e0faa284117d686f3f935f7/raw/a9d27a56e3cc681a0154e45ab1e9c2d0dbf1a502/vimrc
 mv vimrc ~/.vimrc
+
+echo "source /etc/profile.d/vte.sh" >> ~/.zshenv
