@@ -25,3 +25,7 @@ wget https://gist.githubusercontent.com/Jjungs7/e777614c1e0faa284117d686f3f935f7
 mv vimrc ~/.vimrc
 
 echo "source /etc/profile.d/vte.sh" >> ~/.zshenv
+
+# hangul
+sed -i 's/                 symbols\[Group1] = \[ Alt_R, Meta_R ] };/\/\/                 symbols\[Group1] = \[ Alt_R, Meta_R ] };\n                 symbols\[Group1] = \[ Hangul ] };/' /usr/share/X11/xkb/symbols/altwin
+rm /var/lib/xkb/*.xkm

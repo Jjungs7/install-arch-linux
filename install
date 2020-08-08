@@ -44,12 +44,17 @@ done
 
 check_flag=0
 while [ "${check_flag}" == 0 ]; do
+	home_exists=1
 	check_flag=1
-	read -p "Enter home partition: " partition_home
+	read -p "Enter swap partition(leave empty if not needed): " partition_home
 	containsElement "${partition_home}" "${fdisk_output[@]}"
 	res=$?
 	if [ "${res}" != 1 ] || [ "${partition_home}" == "" ]; then
-		echo -e "${YELLOW}home${NC} device name does not exist"
+		home_exists=0
+	fi
+
+	if [ "${home_exists}" == 0 ] && [ "${partition_home}" != "" ]; then
+		echo -e "${BLUE}Home${NC} device name is incorrect (or does not exist)"
 		check_flag=0
 	fi
 done
@@ -113,8 +118,11 @@ echo Finished installing arch linux
 # Format and mount remaining partitions
 echo
 echo Mounting remaining partitions
-mkfs.ext4 ${partition_home}
-mount ${partition_home} /mnt/home
+if [ "${partition_home}" != "" ]; then
+	mkfs.ext4 ${partition_home}
+	mkdir /mnt/home
+	mount ${partition_home} /mnt/home
+fi
 if [ "${partition_hdd}" != "" ]; then
 	mkdir /mnt/hdd
 	mount ${partition_hdd} /mnt/hdd
