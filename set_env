@@ -1,31 +1,14 @@
-# should run on user mode
-sudo pacman -Syu
-yaourt -Syu
-
 # install aur
 cd /tmp
 git clone https://aur.archlinux.org/package-query.git
 cd package-query/
 makepkg -si && cd /tmp/
+
+#
 git clone https://aur.archlinux.org/yaourt.git
 cd yaourt/
 makepkg -si
+
+#
 yaourt -Sy pamac-aur
 cd ~
-
-# install frequently using packages
-echo "\n" | sudo pacman -S zsh zsh-syntax-highlighting pyenv git vim wget gcc ttf-dejavu
-yaourt -S oh-my-zsh nvm ttf-nanumgothic_coding google-chrome
-
-# gnome extensions
-yaourt -S gnome-shell-extension-no-topleft-hot-corner gnome-shell-extension-desktop-icons-git gnome-shell-extension-dash-to-dock gnome-shell-extensions
-
-# vimrc
-wget https://gist.githubusercontent.com/Jjungs7/e777614c1e0faa284117d686f3f935f7/raw/a9d27a56e3cc681a0154e45ab1e9c2d0dbf1a502/vimrc
-mv vimrc ~/.vimrc
-
-echo "source /etc/profile.d/vte.sh" >> ~/.zshenv
-
-# hangul
-sed -i 's/                 symbols\[Group1] = \[ Alt_R, Meta_R ] };/\/\/                 symbols\[Group1] = \[ Alt_R, Meta_R ] };\n                 symbols\[Group1] = \[ Hangul ] };/' /usr/share/X11/xkb/symbols/altwin
-rm /var/lib/xkb/*.xkm

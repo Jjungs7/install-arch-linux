@@ -16,113 +16,24 @@ containsElement () {
   return 0
 }
 
-fdisk -l
-echo
-echo "Please enter the device names."
-echo -e "${RED}root${NC} and ${YELLOW}home${NC} partitions are required"
-check_flag=0
-fdisk_output=( $(fdisk -l) )
-for (( i=$(( ${#fdisk_output[@]} - 1 )); i>=0; i--)); do
-	if [[ ${fdisk_output[$i]} =~ "/dev/" ]]; then
-		:
-	else
-		unset fdisk_output[$i]
-	fi
-done
+# Input partitions
+read -p "Enter root partition: " partition_root
+read -p "Enter boot partition: " partition_boot
+read -p "Enter swap partition: " partition_swap
+read -p "Enter hdd partition: " partition_hdd
+read -p "Enter /usr/local partition: " partition_usrlocal
 
-while [ "${check_flag}" == 0 ]; do
-	check_flag=1
-	read -p "Enter root partition: " partition_root
-	containsElement "${partition_root}" "${fdisk_output[@]}"
-	res=$?
-	if [ "${res}" != 1 ] || [ "${partition_root}" == "" ]; then
-		echo -e "${RED}root${NC} device name does not exist"
-		check_flag=0
-		continue
-	fi
-done
-
-check_flag=0
-while [ "${check_flag}" == 0 ]; do
-	home_exists=1
-	check_flag=1
-	read -p "Enter swap partition(leave empty if not needed): " partition_home
-	containsElement "${partition_home}" "${fdisk_output[@]}"
-	res=$?
-	if [ "${res}" != 1 ] || [ "${partition_home}" == "" ]; then
-		home_exists=0
-	fi
-
-	if [ "${home_exists}" == 0 ] && [ "${partition_home}" != "" ]; then
-		echo -e "${BLUE}Home${NC} device name is incorrect (or does not exist)"
-		check_flag=0
-	fi
-done
-	
-check_flag=0
-while [ "${check_flag}" == 0 ]; do
-	swap_exists=1
-	check_flag=1
-	read -p "Enter swap partition(leave empty if not needed): " partition_swap
-	containsElement "${partition_swap}" "${fdisk_output[@]}"
-	res=$?
-	if [ "${res}" != 1 ] || [ "${partition_swap}" == "" ]; then
-		swap_exists=0
-	fi
-
-	if [ "${swap_exists}" == 0 ] && [ "${partition_swap}" != "" ]; then
-		echo -e "${BLUE}Swap${NC} device name is incorrect (or does not exist)"
-		check_flag=0
-	fi
-done
-
-check_flag=0
-while [ "${check_flag}" == 0 ]; do
-	hdd_exists=1
-	check_flag=1
-	read -p "Enter hdd partition(leave empty if not needed): " partition_hdd
-	containsElement "${partition_hdd}" "${fdisk_output[@]}"
-	res=$?
-	if [ "${res}" != 1 ] || [ "${partition_hdd}" == "" ]; then
-		hdd_exists=0
-	fi
-
-	if [ "${hdd_exists}" == 0 ] && [ "${partition_hdd}" != "" ]; then
-		echo -e "${GREEN}hdd${NC} device name is incorrect (or does not exist)"
-		check_flag=0
-	fi
-done
-
+# Input username
 read -p "Please type your username: " username
 read -s -p "Enter new password for ${username}: (input is not visible)" userpw
 
-# Format and mount root
+# Format and mount partitions
 echo
 echo Mounting created partition onto /mnt
 mkfs.ext4 ${partition_root}
 mount ${partition_root} /mnt
 
-# Change pacman mirror of live Linux
-yes | pacman -S pacman-contrib
-cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-echo Refreshing pacman mirrors. This may take some time...
-curl -s "https://www.archlinux.org/mirrorlist/?country=KR&country=TW&country=HK&country=JP&protocol=https&ip_version=4&use_mirror_status=on" | sed -e 's/^#Server/Server/' | rankmirrors -n 6 - > /etc/pacman.d/mirrorlist
-pacman -Sy
-echo Successfully refreshed mirrors
-
-# Install arch_linux
-echo Installing arch linux into /mnt. This may take some time...
-pacstrap /mnt base
-echo Finished installing arch linux
-
-# Format and mount remaining partitions
-echo
 echo Mounting remaining partitions
-if [ "${partition_home}" != "" ]; then
-	mkfs.ext4 ${partition_home}
-	mkdir /mnt/home
-	mount ${partition_home} /mnt/home
-fi
 if [ "${partition_hdd}" != "" ]; then
 	mkdir /mnt/hdd
 	mount ${partition_hdd} /mnt/hdd
@@ -131,10 +42,21 @@ if [ "${partition_swap}" != "" ]; then
 	mkswap ${partition_swap}
 	swapon ${partition_swap}
 fi
-genfstab -U /mnt >> /mnt/etc/fstab
+if [ "${partition_usrlocal}" != "" ]; then
+	mkdir -p /mnt/usr/local
+	mount ${partition_usrlocal} /mnt/usr/local
+fi
+
+# Install arch_linux
+echo Installing arch linux into /mnt. This may take some time...
+pacstrap /mnt base base-devel linux linux-firmware
+echo Finished installing arch linux
 
 # Change pacman mirror
 cat /etc/pacman.d/mirrorlist > /mnt/etc/pacman.d/mirrorlist
+
+# Generate file that indicates which partitions to mount on boot
+genfstab -U /mnt >> /mnt/etc/fstab
 
 # Chroot into installed linux
 echo "#!bin/bash
@@ -146,9 +68,10 @@ BLUE='\033[1;34m'
 NC='\033[0m'
 
 partition_root=\"${partition_root}\"
-partition_home=\"${partition_home}\"
+partition_boot=\"${partition_boot}\"
 partition_swap=\"${partition_swap}\"
 partition_hdd=\"${partition_hdd}\"
+partition_usrlocal=\"${partition_usrlocal}\"
 username=\"${username}\"
 userpw=\"${userpw}\"
 " | cat - apply_settings > temp && mv temp apply_settings

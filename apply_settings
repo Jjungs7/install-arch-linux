@@ -1,20 +1,35 @@
+# Install packages
+echo Installing packages...
+echo "\n" | pacman -Sy base-devel gdm
+yes | pacman -S uim wget yajl linux sudo dhcpcd zsh zsh-syntax-highlighting pyenv git vim wget gcc ttf-dejavu zsh-autosuggestions grub efibootmgr os-prober intel-ucode
+
 # Set time zone
 echo Setting time zone and language
 ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
 sed -i '/^#\(ko_KR.UTF-8 UTF-8\|en_US.UTF-8 UTF-8\) /s/^#//g' /etc/locale.gen
 echo LANG=en_US.UTF-8 > /etc/locale.conf
 locale-gen
+timedatectl set-local-rtc 1
+echo "UTC=no" >> /etc/default/rcS
+
+# keyboard layout
+echo "KEYMAP=us" >> /etc/vconsole.conf
 
 echo "${username}-pc" >> /etc/hostname
-echo "127.0.0.1 localhost\n::1 localhost\n127.0.1.1 ${username}-pc.org" >> /etc/hosts
+echo -e "127.0.0.1 localhost\n::1 localhost\n127.0.1.1 ${username}-pc.org" >> /etc/hosts
 
 groupadd sudo
 useradd ${username} -g users -G storage,wheel,power,sudo -m -s /bin/bash
-echo ${username}:${userpw} | chpasswd
+echo "${username}:${userpw}" | chpasswd
 echo "root:${userpw}" | chpasswd
 
+echo Changing sudo privileges
+sed -i 's/^# %sudo ALL=(ALL) ALL/%sudo ALL=(ALL) ALL/' /etc/sudoers
+
+chsh root  -s /usr/bin/zsh
+chsh jjungs -s /usr/bin/zsh
+
 echo "chowning /hdd..."
-rm -rf /home/${username}/Downloads /home/${username}/Documents /home/${username}/Videos /home/${username}/Pictures /home/${username}/Music
 ln -s /hdd/Pictures /home/${username}/Pictures
 ln -s /hdd/Videos /home/${username}/Videos
 ln -s /hdd/Downloads /home/${username}/Downloads
@@ -22,30 +37,28 @@ ln -s /hdd/Music /home/${username}/Music
 ln -s /hdd/Documents /home/${username}/Documents
 chown -R ${username}:users /hdd
 
-# Install packages
-echo Installing packages...
-pacman -Syyu
-echo "\n" | pacman -S base-devel
-yes | pacman -S wget yajl linux sudo
-
-echo Changing sudo privileges
-sed -i 's/^# %sudo ALL=(ALL) ALL/%sudo ALL=(ALL) ALL/' /etc/sudoers
-
-yes | pacman -S grub efibootmgr os-prober intel-ucode
-mkdir /windows
+mkdir /esp /windows
 mount /dev/sda4 /windows
-os-prober
-
-mkdir /esp
 mount ${partition_boot} /esp
-grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB
+os-prober
+grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=grub
 grub-mkconfig -o /boot/grub/grub.cfg
 umount /esp
-rm -rf /esp
 umount /windows
-rm -rf /windows
+rm -rf /esp /windows
 
-echo "\n" | pacman -S xorg xorg-server gnome gnome-tweaks dhcpcd
+sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+wget https://gist.githubusercontent.com/Jjungs7/e777614c1e0faa284117d686f3f935f7/raw/a9d27a56e3cc681a0154e45ab1e9c2d0dbf1a502/vimrc
+mv vimrc ~/.vimrc
+
+echo "source /etc/profile.d/vte.sh" >> ~/.zshenv
+echo "source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
+echo "source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" >> ~/.zshrc
+
+sed -i 's/^AutomaticLoginEnable=False/AutomaticLoginEnable=True/' /etc/gdm/custom.conf
+sed -i 's/^AutomaticLogin=/AutomaticLogin=${username}/' /etc/gdm/custom.conf
+
 systemctl enable gdm.service
 systemctl enable systemd-networkd.service
 systemctl enable dhcpcd.service

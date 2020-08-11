@@ -1,0 +1,7 @@
+# Change pacman mirror of live Linux
+yes | pacman -S pacman-contrib
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+echo Refreshing pacman mirrors. This may take some time...
+curl -s "https://www.archlinux.org/mirrorlist/?country=KR&country=TW&country=HK&country=JP&protocol=https&ip_version=4&use_mirror_status=on" | sed -e 's/^#Server/Server/' | rankmirrors -n 6 - > /etc/pacman.d/mirrorlist
+pacman -Sy
+echo Successfully refreshed mirrors
