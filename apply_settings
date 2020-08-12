@@ -1,7 +1,7 @@
 # Install packages
 echo Installing packages...
-echo -e "\n" | pacman -Sy gdm
-yes | pacman -S uim wget yajl linux sudo dhcpcd zsh zsh-syntax-highlighting pyenv git vim wget gcc ttf-dejavu zsh-autosuggestions grub efibootmgr intel-ucode
+echo -e "\n" | pacman -S gnome
+yes | pacman -S uim gtk2 wget yajl linux sudo zsh zsh-syntax-highlighting pyenv git vim wget gcc ttf-dejavu zsh-autosuggestions grub efibootmgr intel-ucode
 
 # Set time zone
 echo Setting time zone and language
@@ -9,6 +9,7 @@ ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
 sed -i '/^#\(ko_KR.UTF-8 UTF-8\|en_US.UTF-8 UTF-8\) /s/^#//g' /etc/locale.gen
 echo LANG=en_US.UTF-8 > /etc/locale.conf
 locale-gen
+timedatectl set-local-rtc 1
 echo "UTC=no" >> /etc/default/rcS
 
 # keyboard layout
@@ -35,7 +36,7 @@ ln -s /hdd/Workspace /home/${username}/Workspace
 chown -R ${username}:users /hdd
 
 if [ "${partition_windows}" != "" ]; then
-	pacman -S os-prober
+	yes | pacman -S os-prober
 	mkdir /windows
 	mount ${partition_windows} /windows
 	os-prober
@@ -54,11 +55,10 @@ if [ "${partition_windows}" != "" ]; then
 fi
 
 wget https://gist.githubusercontent.com/Jjungs7/e777614c1e0faa284117d686f3f935f7/raw/a9d27a56e3cc681a0154e45ab1e9c2d0dbf1a502/vimrc
-mv vimrc ~/.vimrc
+mv vimrc /home/${username}/.vimrc
+chown ${username}:users /home/${username}/.vimrc
 
-# sed -i 's/^AutomaticLoginEnable=False/AutomaticLoginEnable=True/' /etc/gdm/custom.conf
-# sed -i 's/^AutomaticLogin=/AutomaticLogin=${username}/' /etc/gdm/custom.conf
+sed -i 's/^#WaylandEnable=false/#WaylandEnable=false\n\nAutomaticLoginEnable=True\nAutomaticLogin=${username}/' /etc/gdm/custom.conf
 
 systemctl enable gdm.service
-systemctl enable systemd-networkd.service
-systemctl enable dhcpcd.service
+systemctl enable NetworkManager.service
