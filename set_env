@@ -1,3 +1,8 @@
+# install oh-my-zsh
+sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+echo "source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
+echo "source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" >> ~/.zshrc
+
 # install aur
 cd /tmp
 git clone https://aur.archlinux.org/package-query.git
@@ -12,3 +17,9 @@ makepkg -si
 #
 yaourt -Sy pamac-aur
 cd ~
+
+# ??
+echo "source /etc/profile.d/vte.sh" >> ~/.zshenv
+
+# set hardware time to local time
+timedatectl set-local-rtc 1

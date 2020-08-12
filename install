@@ -21,7 +21,7 @@ read -p "Enter root partition: " partition_root
 read -p "Enter boot partition: " partition_boot
 read -p "Enter swap partition: " partition_swap
 read -p "Enter hdd partition: " partition_hdd
-read -p "Enter /usr/local partition: " partition_usrlocal
+read -p "Enter windows partition: " partition_windows
 
 # Input username
 read -p "Please type your username: " username
@@ -30,7 +30,7 @@ read -s -p "Enter new password for ${username}: (input is not visible)" userpw
 # Format and mount partitions
 echo
 echo Mounting created partition onto /mnt
-mkfs.ext4 ${partition_root}
+echo "y" | mkfs.ext4 ${partition_root}
 mount ${partition_root} /mnt
 
 echo Mounting remaining partitions
@@ -41,10 +41,6 @@ fi
 if [ "${partition_swap}" != "" ]; then
 	mkswap ${partition_swap}
 	swapon ${partition_swap}
-fi
-if [ "${partition_usrlocal}" != "" ]; then
-	mkdir -p /mnt/usr/local
-	mount ${partition_usrlocal} /mnt/usr/local
 fi
 
 # Install arch_linux
@@ -71,7 +67,7 @@ partition_root=\"${partition_root}\"
 partition_boot=\"${partition_boot}\"
 partition_swap=\"${partition_swap}\"
 partition_hdd=\"${partition_hdd}\"
-partition_usrlocal=\"${partition_usrlocal}\"
+partition_windows=\"${partition_windows}\"
 username=\"${username}\"
 userpw=\"${userpw}\"
 " | cat - apply_settings > temp && mv temp apply_settings
