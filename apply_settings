@@ -62,3 +62,6 @@ sed -i 's/^#WaylandEnable=false/#WaylandEnable=false\n\nAutomaticLoginEnable=Tru
 
 systemctl enable gdm.service
 systemctl enable NetworkManager.service
+
+gsettings set org.gnome.desktop.peripherals.keyboard delay 150
+gsettings set org.gnome.desktop.peripherals.keyboard repeat-interval 30
