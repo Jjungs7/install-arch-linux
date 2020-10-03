@@ -1,6 +1,6 @@
 # Install packages
 echo Installing packages...
-echo -e "\n" | pacman -S gnome
+pacman --noconfirm -S gnome
 yes | pacman -S uim gtk2 wget yajl linux sudo zsh zsh-syntax-highlighting pyenv git vim wget gcc ttf-dejavu zsh-autosuggestions grub efibootmgr intel-ucode
 
 # Set time zone
@@ -63,6 +63,3 @@ sed -i 's/^#WaylandEnable=false/#WaylandEnable=false\n\nAutomaticLoginEnable=Tru
 systemctl enable gdm.service
 systemctl enable NetworkManager.service
 
-gsettings set org.gnome.desktop.peripherals.keyboard delay 150
-gsettings set org.gnome.desktop.peripherals.keyboard repeat-interval 30
-gsettings set org.gnome.desktop.peripherals.mouse speed -0.4

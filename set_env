@@ -1,3 +1,14 @@
+# change peripheral settings
+gsettings set org.gnome.desktop.peripherals.keyboard delay 150
+gsettings set org.gnome.desktop.peripherals.keyboard repeat-interval 30
+gsettings set org.gnome.desktop.peripherals.mouse speed -0.4
+
+# ??
+echo "source /etc/profile.d/vte.sh" >> ~/.zshenv
+
+# set hardware time to local time
+timedatectl set-local-rtc 1
+
 # install oh-my-zsh
 sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 echo "source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
@@ -18,8 +29,3 @@ makepkg -si
 yaourt -Sy pamac-aur
 cd ~
 
-# ??
-echo "source /etc/profile.d/vte.sh" >> ~/.zshenv
-
-# set hardware time to local time
-timedatectl set-local-rtc 1
